@@ -1,0 +1,239 @@
+#if !defined(_mod_2_)
+#  define _mod_2_
+
+class model_data : public ad_comm{
+  init_adstring DataFile;
+  init_adstring ControlFile;
+  init_adstring ResultsFileName;
+  data_int nyears;
+  data_int nages;
+  data_ivector vyears;
+  int styr;
+  int styr_pop;
+  int endyr;
+  data_ivector vages;
+  int stage;
+  int endage;
+  data_vector surveyindex;
+  data_matrix cpueindex;
+  dvector indxtrawl;
+  dvector indxlongline;
+  dvector indxartisanal;
+  data_matrix landing;
+  dvector ytrawl;
+  dvector ylongline;
+  dvector yartisanal;
+  data_matrix catagetrwl;
+  data_matrix catagelongl;
+  data_matrix catageartisa;
+  data_matrix natagesurvey;
+  data_matrix watagefleet;
+  dvector Wm;
+  data_number M;
+  data_matrix msex;
+  data_number offset;
+  data_int phs_init;
+  data_int phs_R;
+  data_int phs_q;
+  data_int phs_Sel;
+  data_int phs_F;
+  data_number h;
+  data_int Ptrawl_1;
+  data_int Ptrawl_2;
+  int PeT;
+  data_int Ppal_1;
+  data_int Ppal_2;
+  int PeP;
+  data_int Pesp_1;
+  data_int Pesp_2;
+  int PeE;
+  data_int chQarr;
+  data_int inxtrawl;
+  data_vector strawl;
+  data_int inxpal;
+  data_vector spal;
+  data_int inxesp;
+  data_vector sesp;
+  data_int inxsurv;
+  data_vector ssurv;
+  data_vector nss;
+  data_int Pdarr_1;
+  data_int Pdarr_2;
+  data_int Pdpal_1;
+  data_int Pdpal_2;
+  data_matrix cv_matrix;
+  dvector cv_arr;
+  dvector cv_pal;
+  dvector cv_cru;
+  data_vector cv_s;
+  data_number cv_p;
+  data_vector rango_sa;
+  data_vector rango_sl;
+  data_number cv_sel_a;
+  data_number cv_sel_c;
+  data_int yr_sim;
+  data_int nFt;
+  data_vector mf;
+  data_number offsetCt;
+  ~model_data();
+  model_data(int argc,char * argv[]);
+  friend class model_parameters;
+};
+
+class model_parameters : public model_data ,
+  public function_minimizer
+{
+public:
+  ~model_parameters();
+  void preliminary_calculations(void);
+  void set_runtime(void);
+  virtual void * mycast(void) {return (void*)this;}
+  static int mc_phase(void)
+  {
+    return initial_params::mc_phase;
+  }
+  static int mceval_phase(void)
+  {
+    return initial_params::mceval_phase;
+  }
+  static int sd_phase(void)
+  {
+    return initial_params::sd_phase;
+  }
+  static int current_phase(void)
+  {
+    return initial_params::current_phase;
+  }
+  static int last_phase(void)
+  {
+    return (initial_params::current_phase
+      >=initial_params::max_number_phases);
+  }
+  static prevariable current_feval(void)
+  {
+    return *objective_function_value::pobjfun;
+  }
+private:
+  ivector integer_control_flags;
+  dvector double_control_flags;
+  param_init_bounded_vector log_selA;
+  param_init_bounded_vector log_selB;
+  param_init_bounded_vector log_selC;
+  param_init_number log_qpal;
+  param_init_number log_qcru;
+  param_init_vector log_qarr;
+  param_init_bounded_number log_Ro;
+  param_init_bounded_vector mu;
+  param_init_bounded_vector log_Farr;
+  param_init_bounded_vector log_Fesp;
+  param_init_bounded_vector log_Fpal;
+  param_likeprof_number Ro_pl;
+  param_stddev_number Ro;
+  param_stddev_vector SB;
+  param_stddev_vector R;
+  param_stddev_vector BT;
+  param_stddev_vector B6;
+  param_stddev_vector S_pal;
+  param_stddev_vector S_arr;
+  param_stddev_vector S_esp;
+  param_stddev_vector S_cru;
+  param_stddev_vector Farr;
+  param_stddev_vector Fpal;
+  param_stddev_vector Fesp;
+  param_stddev_vector Ftot;
+  param_stddev_vector muArr;
+  param_stddev_vector muPal;
+  param_stddev_vector muEsp;
+  param_stddev_matrix BDp;
+  param_stddev_matrix Yproy;
+  param_stddev_vector Reducc;
+  param_stddev_vector Bdepl;
+  param_matrix RPRp;
+  param_number alpha;
+  param_number beta;
+  param_number So;
+  param_matrix No;
+  param_matrix NS;
+  param_vector NSo;
+  param_vector uno_ages;
+  param_vector uno_years;
+  param_vector uno_years_arr;
+  param_vector uno_years_pal;
+  param_vector uno_years_esp;
+  param_matrix Fcr_arr;
+  param_matrix Fcr_pal;
+  param_matrix Fcr_esp;
+  param_matrix Fcr_total;
+  param_matrix Z;
+  param_matrix Surv;
+  param_matrix ND;
+  param_vector BDcru;
+  param_matrix Zarr;
+  param_matrix Zpal;
+  param_matrix Zesp;
+  param_vector BMVarr;
+  param_vector BMVpal;
+  param_vector BMVesp;
+  param_vector CPUEarr;
+  param_vector CPUEpal;
+  param_vector CPUEesp;
+  param_vector estBDcru;
+  param_matrix cageArr;
+  param_matrix cagePal;
+  param_matrix cageEsp;
+  param_matrix NSurvey;
+  param_vector YestArr;
+  param_vector YestPal;
+  param_vector YestEsp;
+  param_matrix pobsarr;
+  param_matrix pestarr;
+  param_matrix pobspal;
+  param_matrix pestpal;
+  param_matrix pobsesp;
+  param_matrix pestesp;
+  param_matrix pobssurv;
+  param_matrix pestsurv;
+  param_vector logL;
+  param_vector penL;
+  param_number a;
+  param_number sl;
+  param_number sr;
+  param_vector p;
+  param_vector d_arr;
+  param_vector d_pal;
+  param_vector d_esp;
+  param_vector d_cru;
+  param_number log_qesp;
+  param_number prior_function_value;
+  param_number likelihood_function_value;
+  objective_function_value objF;
+  param_number Rp;
+  param_number Nplus;
+  param_number Yp;
+  param_vector Np;
+  param_vector wp;
+  param_vector msp;
+  param_vector Sp;
+  param_vector Fp;
+  param_vector Zp;
+  param_vector NDp;
+  param_vector Ctp;
+public:
+  virtual void userfunction(void);
+  virtual void report(const dvector& gradients);
+  virtual void final_calcs(void);
+  model_parameters(int sz,int argc, char * argv[]);
+  virtual void initializationfunction(void);
+  void selectivity_exploitation_rate(void);
+  void initial_age_structure(void);
+  void selectivity_penalties(void);
+  void dynamics_abundance_per_fleet(void);
+  void biomass_and_mortality(void);
+  void estimates_cpue_fleet(void);
+  void catch_at_age(void);
+  void biomass_state(void);
+  void evaluate_objective_function(void);
+  void sim_Fcte(void);
+
+};
+#endif
