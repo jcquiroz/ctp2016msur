@@ -29,7 +29,6 @@
 		return fileName;
 	}
 #include <admodel.h>
-#include <contrib.h>
 
   extern "C"  {
     void ad_boundf(int i);
@@ -48,8 +47,6 @@ model_data::model_data(int argc,char * argv[]) : ad_comm(argc,argv)
  cout << "basefileName: " << " " << BaseFileName << endl;
  ReportFileName = BaseFileName + adstring(".rep");
  ResultsPath = stripExtension(ResultsFileName);
- depur(ReportFileName)
- depuro(ResultsPath)
  ad_comm::change_datafile_name(DataFile);
   nyears.allocate("nyears");
   nages.allocate("nages");
@@ -186,9 +183,6 @@ model_parameters::model_parameters(int sz,int argc,char * argv[]) :
   Reducc.allocate(1,nFt,"Reducc");
   Bdepl.allocate(styr,endyr,"Bdepl");
   RPRp.allocate(endyr+1,endyr+yr_sim,1,nFt,"RPRp");
-  #ifndef NO_AD_INITIALIZE
-    RPRp.initialize();
-  #endif
   alpha.allocate("alpha");
   #ifndef NO_AD_INITIALIZE
   alpha.initialize();
@@ -410,8 +404,6 @@ model_parameters::model_parameters(int sz,int argc,char * argv[]) :
   log_qesp.initialize();
   #endif
   objF.allocate("objF");
-  prior_function_value.allocate("prior_function_value");
-  likelihood_function_value.allocate("likelihood_function_value");
   Rp.allocate("Rp");
   #ifndef NO_AD_INITIALIZE
   Rp.initialize();
@@ -456,16 +448,16 @@ model_parameters::model_parameters(int sz,int argc,char * argv[]) :
   #ifndef NO_AD_INITIALIZE
     Ctp.initialize();
   #endif
+  Fproy.allocate(endyr+1,endyr+yr_sim,1,nFt,"Fproy");
+  #ifndef NO_AD_INITIALIZE
+    Fproy.initialize();
+  #endif
 }
 
 void model_parameters::preliminary_calculations(void)
 {
 
-#if defined(USE_ADPVM)
-
   admaster_slave_variable_interface(*this);
-
-#endif
   uno_ages = 1;
   uno_years = 1;
   uno_years_arr = 1;
@@ -487,7 +479,6 @@ void model_parameters::set_runtime(void)
 
 void model_parameters::userfunction(void)
 {
-  objF =0.0;
   selectivity_exploitation_rate();
   initial_age_structure();
   selectivity_penalties();
@@ -497,14 +488,13 @@ void model_parameters::userfunction(void)
   catch_at_age();
   biomass_state();
   evaluate_objective_function();
-  
   if(last_phase())
     {
     sim_Fcte();
     }
   if(mceval_phase())
     {
-    ofstream out("model_msur.mcmc.out",ios::app);
+    ofstream out("mod_2.mcmc.out",ios::app);
     out << Ro << " " << objF << " " << Ftot << " " << SB << endl;
     out.close();
     }
@@ -513,7 +503,6 @@ void model_parameters::userfunction(void)
 void model_parameters::selectivity_exploitation_rate(void)
 {
   int t,i;
-     
      // Palangre
      a  = mfexp(log_selA(1));
      sl = mfexp(log_selB(1));
@@ -526,7 +515,6 @@ void model_parameters::selectivity_exploitation_rate(void)
            {S_pal(i) = pow(2,-1*square((i-a)/sr));}
        }
       S_pal = S_pal / (max(S_pal)+1e-6);
-  
      // Arrastre
      a  = mfexp(log_selA(2));
      sl = mfexp(log_selB(2));
@@ -539,7 +527,6 @@ void model_parameters::selectivity_exploitation_rate(void)
            {S_arr(i) = pow(2,-1*square((i-a)/sr));}
        }
       S_arr = S_arr / (max(S_arr)+1e-6);
- 
      // Espinel
      a  = mfexp(log_selA(3));
      sl = mfexp(log_selB(3));
@@ -552,7 +539,6 @@ void model_parameters::selectivity_exploitation_rate(void)
            {S_esp(i) = pow(2,-1*square((i-a)/sr));}
        }
       S_esp = S_esp / (max(S_esp)+1e-6);
- 
      // Cruceros
      a  = mfexp(log_selA(4));
      sl = mfexp(log_selB(4));
@@ -571,7 +557,6 @@ void model_parameters::selectivity_exploitation_rate(void)
   Fcr_pal = elem_prod(outer_prod(uno_years_pal,S_pal),outer_prod(Fpal,uno_ages));
   Fcr_esp = elem_prod(outer_prod(uno_years_esp,S_esp),outer_prod(Fesp,uno_ages));
   Fcr_arr = elem_prod(outer_prod(uno_years_arr,S_arr),outer_prod(Farr,uno_ages));
-  
   for(t=styr; t<=endyr; t++)
     {
     if(t < Pesp_1)
@@ -581,10 +566,8 @@ void model_parameters::selectivity_exploitation_rate(void)
     else
       {Fcr_total(t) = Fcr_arr(t) + Fcr_esp(t) + Fcr_pal(t);}
     }
-  
   Z = Fcr_total + M;
   Surv = mfexp(-1.0 * Z);
-  
   for(t=styr; t<=endyr; t++)
     {
     if(t < Pesp_1)
@@ -594,7 +577,6 @@ void model_parameters::selectivity_exploitation_rate(void)
     else
       { Ftot(t) = Farr(t) + Fesp(t) + Fpal(t);}
     }
-    
 }
 
 void model_parameters::initial_age_structure(void)
@@ -665,7 +647,6 @@ void model_parameters::selectivity_penalties(void)
          else
            {d_esp(t) = pow(2,-1*square((p(t)-a)/sr));}
      }  
- 
      // Cruceros
      a  = mfexp(log_selA(4));
      sl = mfexp(log_selB(4));
@@ -694,7 +675,6 @@ void model_parameters::dynamics_abundance_per_fleet(void)
     NS.rowfill(t,(elem_prod(elem_prod(elem_prod(extract_row(No,t),msex(t)),Wm),mfexp(-1.0*Z(t)*9/12))));
     SB(t) =  sum(extract_row(NS,t));    
     }
-    
 }
 
 void model_parameters::biomass_and_mortality(void)
@@ -705,15 +685,12 @@ void model_parameters::biomass_and_mortality(void)
   Zarr = Fcr_arr + M; 
   BMVarr = rowsum(elem_prod(elem_div(1-mfexp(-1.0*Zarr),Zarr),elem_prod(elem_prod(No,outer_prod(uno_years,S_arr)),outer_prod(uno_years,Wm))));
   muArr = elem_div(ytrawl+1e-6,BMVarr);
-  
   Zpal = M; for(t=Ppal_1; t<=Ppal_2; t++) {Zpal(t) += Fcr_pal(t);}
   BMVpal = rowsum(elem_prod(elem_div(1-mfexp(-1.0*Zpal),Zpal),elem_prod(elem_prod(No,outer_prod(uno_years,S_pal)),outer_prod(uno_years,Wm))));
   muPal = elem_div(ylongline+1e-6,BMVpal);
-  
   Zesp = M; for(t=Pesp_1; t<=Pesp_2; t++) {Zesp(t) += Fcr_esp(t);}
   BMVesp = rowsum(elem_prod(elem_div(1-exp(-1.0*Zesp),Zesp),elem_prod(elem_prod(No,outer_prod(uno_years,S_esp)),outer_prod(uno_years,Wm))));
   muEsp = elem_div(yartisanal+1e-6,BMVesp);
-   
 }
 
 void model_parameters::estimates_cpue_fleet(void)
@@ -768,14 +745,12 @@ void model_parameters::biomass_state(void)
    B6(t) = sum(elem_prod(No(t)(stage+5, endage),Wm(stage+5, endage)));
    Bdepl(t)=SB(t)/So;
   }
-  
 }
 
 void model_parameters::evaluate_objective_function(void)
 {
   int t;
   logL.initialize();
-  
   logL(1) = -1.*nss(1)*sum(elem_prod(pobsarr,log(pestarr)));
   logL(2) = -1.*nss(2)*sum(elem_prod(pobspal,log(pestpal)));
   logL(3) = -1.*nss(3)*sum(elem_prod(pobsesp,log(pestesp)));
@@ -810,49 +785,63 @@ void model_parameters::evaluate_objective_function(void)
   penL(11) = 0.5 * (square(mfexp(log_selC(3))-rango_sl(3))/(2*square(cv_sel_c)));
   penL(12) = 0.5 * (square(mfexp(log_selC(4))-rango_sl(4))/(2*square(cv_sel_c)));
   objF = sum(logL) + penL(9) + penL(10) + penL(11) + penL(12); 
- 
 }
 
 void model_parameters::sim_Fcte(void)
 {
-  
-  for (int j=1; j<=nFt; j++) 
-      {
-      Np = No(endyr); 
-      Rp = mean(R(endyr-5,endyr));  
-      wp = Wm; 
-      Sp = Surv(endyr); 
-      msp = msex(endyr);
-      for (int i=endyr+1; i<=endyr+yr_sim; i++)
-      	  {
-	  Nplus = 1.0 - Sp(endage); //a utilizar en grupo plus
-    	  Np(stage+1,endage) = ++elem_prod(Np(stage,endage-1),Sp(stage,endage-1));
-    	  Np(endage) += Np(endage)/Nplus;// Grup plus
-	  Np(stage) = Rp;
-	  
-	  if (i==endyr+1)
-	     {
-	     Fp = 1.10*Fcr_total(endyr);
-	     }
-	  else
-	     {
-	     Fp = mf(j)*Fcr_total(endyr);
-	     }
-    	  Zp = Fp + M;
-    	  Sp = exp(-1.0 * Zp);
-	  NDp = elem_prod(elem_prod(Np,exp(-1.0*(9.0/12.0)*Zp)),msp); 
-  	  BDp(i,j) = sum(elem_prod(NDp,wp));
-          RPRp(i,j)=BDp(i,j)/So;
-	  Ctp = elem_prod(elem_div(Fp,Zp),elem_prod(1.0-Sp,Np)); //Baranov
-  	  Yp = sum(elem_prod(Ctp,wp));
-  	  Yproy(i,j) = Yp;
-	  };
-       }; 
-       	                                          
+  for (int j=1; j<=nFt; j++)
+	{
+		Np = No(endyr); 
+		Rp = mean(R(endyr-5,endyr));  
+		wp = Wm; 
+		Sp = Surv(endyr); 
+		msp = msex(endyr);
+		for (int i=endyr+1; i<=endyr+yr_sim; i++)
+		{
+			Nplus = 1.0 - Sp(endage); //a utilizar en grupo plus
+			Np(stage+1,endage) = ++elem_prod(Np(stage,endage-1),Sp(stage,endage-1));
+			Np(endage) += Np(endage)/Nplus;// Grup plus	
+			Np(stage) = Rp;
+			if (i==endyr+1)
+			{
+				Fp = 0.85*Fcr_total(endyr);
+			}
+			else
+			{
+				Fp = mf(j)*0.24*(Fcr_total(endyr)/max(Fcr_total(endyr))); //Fcr_total(endyr);
+			}
+			Zp = Fp + M;
+			Sp = exp(-1.0 * Zp);
+			NDp 		= elem_prod(elem_prod(Np,exp(-1.0*(9.0/12.0)*Zp)),msp);
+			BDp(i,j)	= sum(elem_prod(NDp,wp));
+			RPRp(i,j)	= BDp(i,j)/So;
+			Ctp			= elem_prod(elem_div(Fp,Zp),elem_prod(1.0-Sp,Np)); //Baranov
+			Yp 			= sum(elem_prod(Ctp,wp));
+			Yproy(i,j) 	= Yp;
+			Fproy(i,j)	= max(Fp); 
+		};
+	}; 
   Reducc = BDp(endyr+yr_sim)/(SB(endyr)+1e-6);
+    if(mceval_phase())
+    {
+    ofstream pry("proyecciones.mcmc.out",ios::app);
+    for (int i=endyr+1; i<=endyr+yr_sim; i++)
+    {
+      pry << "Captura " << i << Yproy(i) << endl;
+    }
+    for (int i=endyr+1; i<=endyr+yr_sim; i++)
+    {
+      pry << "BD " << i << BDp(i) << endl;
+    } 
+    for (int i=endyr+1; i<=endyr+yr_sim; i++)
+    {
+      pry << "depletion " << i << RPRp(i) << endl;
+    }
+    pry.close();
+    }
 }
 
-void model_parameters::report(const dvector& gradients)
+void model_parameters::report()
 {
  adstring ad_tmp=initial_params::get_reportfile_name();
   ofstream report((char*)(adprogram_name + ad_tmp));
@@ -923,27 +912,8 @@ void model_parameters::report(const dvector& gradients)
   reporte(No);
   reporte(So);
   reporte(RPRp);
-}
-
-void model_parameters::final_calcs()
-{
-  if(last_phase() && PLATFORM == "Linux")
-  {
-    adstring cambia = "cp mod_2.rep " + ResultsPath + ".rep";
-    system(cambia);
-    
-    cambia = "cp mod_2.par " + ResultsPath + ".par";
-    system(cambia);
-    
-    cambia = "cp mod_2.std " + ResultsPath + ".std";
-    system(cambia);
-    
-    cambia = "cp mod_2.cor " + ResultsPath + ".cor";
-    system(cambia);
-    
-    cambia = "cp mod_2.mcmc.out " + ResultsPath + ".mcmc.out";
-    system(cambia);
-  }
+  reporte(Fproy);
+  reporte(Fp);
 }
 
 model_data::~model_data()
@@ -951,6 +921,8 @@ model_data::~model_data()
 
 model_parameters::~model_parameters()
 {}
+
+void model_parameters::final_calcs(void){}
 
 #ifdef _BORLANDC_
   extern unsigned _stklen=10000U;
@@ -974,7 +946,12 @@ int main(int argc,char * argv[])
    gradient_structure::set_NUM_DEPENDENT_VARIABLES(5000);
     gradient_structure::set_NO_DERIVATIVES();
     gradient_structure::set_YES_SAVE_VARIABLES_VALUES();
-    if (!arrmblsize) arrmblsize=15000000;
+  #if defined(__GNUDOS__) || defined(DOS386) || defined(__DPMI32__)  || \
+     defined(__MSVC32__)
+      if (!arrmblsize) arrmblsize=150000;
+  #else
+      if (!arrmblsize) arrmblsize=25000;
+  #endif
     model_parameters mp(arrmblsize,argc,argv);
     mp.iprint=10;
     mp.preliminary_calculations();

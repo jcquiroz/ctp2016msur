@@ -59,8 +59,8 @@ DATA_SECTION
 	!! cout << "basefileName: " << " " << BaseFileName << endl;
 	!! ReportFileName = BaseFileName + adstring(".rep");
   !! ResultsPath = stripExtension(ResultsFileName);
-  !! depur(ReportFileName)
-  !! depuro(ResultsPath)
+  // !! depur(ReportFileName)
+  // !! depuro(ResultsPath)
 
   !! ad_comm::change_datafile_name(DataFile);
   init_int nyears;  
@@ -204,7 +204,7 @@ PARAMETER_SECTION
   sdreport_matrix Yproy(endyr+1,endyr+yr_sim,1,nFt)
   sdreport_vector Reducc(1,nFt)
   sdreport_vector Bdepl(styr,endyr) // I:PAYA Agotamiento
-  matrix RPRp(endyr+1,endyr+yr_sim,1,nFt)
+  sdreport_matrix RPRp(endyr+1,endyr+yr_sim,1,nFt)
 
   // -----------------------------------------------
   number alpha     // Parameter stock-recruitment relation
@@ -279,6 +279,7 @@ PARAMETER_SECTION
   vector Zp(stage,endage)
   vector NDp(stage,endage)
   vector Ctp(stage,endage)
+  matrix Fproy(endyr+1,endyr+yr_sim,1,nFt)
 
 
 PRELIMINARY_CALCS_SECTION
@@ -312,7 +313,7 @@ PROCEDURE_SECTION
 
   if(mceval_phase())
     {
-    ofstream out("model_msur.mcmc.out",ios::app);
+    ofstream out("mod_2.mcmc.out",ios::app);
     out << Ro << " " << objF << " " << Ftot << " " << SB << endl;
     out.close();
     }
@@ -649,45 +650,61 @@ FUNCTION evaluate_objective_function
  
 FUNCTION sim_Fcte
   
-  for (int j=1; j<=nFt; j++) 
-      {
-      Np = No(endyr); 
-      Rp = mean(R(endyr-5,endyr));  
-      wp = Wm; 
-      Sp = Surv(endyr); 
-      msp = msex(endyr);
+  for (int j=1; j<=nFt; j++)
+	{
+		Np = No(endyr); 
+		Rp = mean(R(endyr-5,endyr));  
+		wp = Wm; 
+		Sp = Surv(endyr); 
+		msp = msex(endyr);
+		
+		for (int i=endyr+1; i<=endyr+yr_sim; i++)
+		{
+			Nplus = 1.0 - Sp(endage); //a utilizar en grupo plus
+			Np(stage+1,endage) = ++elem_prod(Np(stage,endage-1),Sp(stage,endage-1));
+			Np(endage) += Np(endage)/Nplus;// Grup plus	
+			Np(stage) = Rp;
 
-      for (int i=endyr+1; i<=endyr+yr_sim; i++)
-      	  {
-	  Nplus = 1.0 - Sp(endage); //a utilizar en grupo plus
-    	  Np(stage+1,endage) = ++elem_prod(Np(stage,endage-1),Sp(stage,endage-1));
-    	  Np(endage) += Np(endage)/Nplus;// Grup plus
-	  Np(stage) = Rp;
-	  
-	  if (i==endyr+1)
-	     {
-	     Fp = 1.10*Fcr_total(endyr);
-	     }
-	  else
-	     {
-	     Fp = mf(j)*Fcr_total(endyr);
-	     }
+			if (i==endyr+1)
+			{
+				Fp = 0.85*Fcr_total(endyr);
+			}
+			else
+			{
+				Fp = mf(j)*0.24*(Fcr_total(endyr)/max(Fcr_total(endyr))); //Fcr_total(endyr);
+			}
+			Zp = Fp + M;
+			Sp = exp(-1.0 * Zp);
 
-    	  Zp = Fp + M;
-    	  Sp = exp(-1.0 * Zp);
-
-	  NDp = elem_prod(elem_prod(Np,exp(-1.0*(9.0/12.0)*Zp)),msp); 
-
-  	  BDp(i,j) = sum(elem_prod(NDp,wp));
-          RPRp(i,j)=BDp(i,j)/So;
-
-	  Ctp = elem_prod(elem_div(Fp,Zp),elem_prod(1.0-Sp,Np)); //Baranov
-  	  Yp = sum(elem_prod(Ctp,wp));
-  	  Yproy(i,j) = Yp;
-	  };
-       }; 
+			NDp 		= elem_prod(elem_prod(Np,exp(-1.0*(9.0/12.0)*Zp)),msp);
+			BDp(i,j)	= sum(elem_prod(NDp,wp));
+			RPRp(i,j)	= BDp(i,j)/So;
+			Ctp			= elem_prod(elem_div(Fp,Zp),elem_prod(1.0-Sp,Np)); //Baranov
+			Yp 			= sum(elem_prod(Ctp,wp));
+			Yproy(i,j) 	= Yp;
+			Fproy(i,j)	= max(Fp); 
+		};
+	}; 
        	                                          
   Reducc = BDp(endyr+yr_sim)/(SB(endyr)+1e-6);
+
+    if(mceval_phase())
+    {
+    ofstream pry("proyecciones.mcmc.out",ios::app);
+    for (int i=endyr+1; i<=endyr+yr_sim; i++)
+    {
+      pry << "Captura " << i << Yproy(i) << endl;
+    }
+    for (int i=endyr+1; i<=endyr+yr_sim; i++)
+    {
+      pry << "BD " << i << BDp(i) << endl;
+    } 
+    for (int i=endyr+1; i<=endyr+yr_sim; i++)
+    {
+      pry << "depletion " << i << RPRp(i) << endl;
+    }
+    pry.close();
+    }
 
 
 REPORT_SECTION    
@@ -754,22 +771,26 @@ REPORT_SECTION
   reporte(No);
   reporte(So);
   reporte(RPRp);
+  reporte(Fproy);
+  reporte(Fp);
 
-FINAL_SECTION
-  if(last_phase() && PLATFORM == "Linux")
-  {
-    adstring cambia = "cp mod_2.rep " + ResultsPath + ".rep";
-    system(cambia);
+// FINAL_SECTION
+//   if(last_phase() && PLATFORM == "Linux")
+//   {
+//     adstring cambia = "cp mod_2.rep " + ResultsPath + ".rep";
+//     system(cambia);
     
-    cambia = "cp mod_2.par " + ResultsPath + ".par";
-    system(cambia);
+//     cambia = "cp mod_2.par " + ResultsPath + ".par";
+//     system(cambia);
     
-    cambia = "cp mod_2.std " + ResultsPath + ".std";
-    system(cambia);
+//     cambia = "cp mod_2.std " + ResultsPath + ".std";
+//     system(cambia);
     
-    cambia = "cp mod_2.cor " + ResultsPath + ".cor";
-    system(cambia);
+//     cambia = "cp mod_2.cor " + ResultsPath + ".cor";
+//     system(cambia);
     
-    cambia = "cp mod_2.mcmc.out " + ResultsPath + ".mcmc.out";
-    system(cambia);
-  }
+//     cambia = "cp mod_2.mcmc.out " + ResultsPath + ".mcmc.out";
+//     system(cambia);
+//   }
+
+

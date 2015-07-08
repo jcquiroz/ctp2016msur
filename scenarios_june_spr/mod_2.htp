@@ -1,5 +1,5 @@
-#if !defined(_mod_2_)
-#  define _mod_2_
+#if !defined(_MOD_2_)
+#  define _MOD_2_
 
 class model_data : public ad_comm{
   init_adstring DataFile;
@@ -109,10 +109,6 @@ public:
     return (initial_params::current_phase
       >=initial_params::max_number_phases);
   }
-  static prevariable current_feval(void)
-  {
-    return *objective_function_value::pobjfun;
-  }
 private:
   ivector integer_control_flags;
   dvector double_control_flags;
@@ -148,7 +144,7 @@ private:
   param_stddev_matrix Yproy;
   param_stddev_vector Reducc;
   param_stddev_vector Bdepl;
-  param_matrix RPRp;
+  param_stddev_matrix RPRp;
   param_number alpha;
   param_number beta;
   param_number So;
@@ -204,8 +200,6 @@ private:
   param_vector d_esp;
   param_vector d_cru;
   param_number log_qesp;
-  param_number prior_function_value;
-  param_number likelihood_function_value;
   objective_function_value objF;
   param_number Rp;
   param_number Nplus;
@@ -218,9 +212,10 @@ private:
   param_vector Zp;
   param_vector NDp;
   param_vector Ctp;
+  param_matrix Fproy;
 public:
   virtual void userfunction(void);
-  virtual void report(const dvector& gradients);
+  virtual void report(void);
   virtual void final_calcs(void);
   model_parameters(int sz,int argc, char * argv[]);
   virtual void initializationfunction(void);
